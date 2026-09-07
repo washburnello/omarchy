@@ -94,6 +94,10 @@ Item {
   property var barDragTarget: null
   property var barDragTargetGeometry: null
   property bool barDragAfter: false
+  // Region for a free-space drop into an empty bar section. Set when the
+  // pointer sits in a zone whose section has no widgets to anchor a
+  // slot-relative drop to; the release appends the dragged module there.
+  property string barDragTargetRegion: ""
   property var barDragWindow: null
   property var barDragScreen: null
   property url barDragImageUrl: ""
@@ -417,6 +421,7 @@ Item {
     barDragTarget = null
     barDragTargetGeometry = null
     barDragAfter = false
+    barDragTargetRegion = ""
     barDragSceneX = 0
     barDragSceneY = 0
     barDragScreenX = 0
@@ -912,13 +917,56 @@ Item {
     return changed
   }
 
+  // Bar sections in visual order: left edge to right edge horizontally,
+  // top to bottom vertically. The pointer's fractional position along the
+  // bar names the zone it is over.
+  function dropZoneAtScene(scenePoint, contentWidth, contentHeight) {
+    var zones = ["left", "center-left", "center", "center-right", "right"]
+    var extent = root.vertical ? contentHeight : contentWidth
+    if (!(extent > 0)) return ""
+    var axis = root.vertical ? scenePoint.y : scenePoint.x
+    var frac = Util.clamp(axis / extent, 0, 0.9999)
+    return zones[Math.floor(frac * zones.length)]
+  }
+
+  // Insertion marker for a drop into an empty zone, in scene coordinates:
+  // a thin line across the bar at the zone's midpoint.
+  function zoneMarkerSceneRect(region, contentWidth, contentHeight) {
+    var zones = ["left", "center-left", "center", "center-right", "right"]
+    var idx = zones.indexOf(region)
+    if (idx === -1) return null
+    var thickness = Style.spacing.xs
+    if (root.vertical) {
+      if (!(contentHeight > 0)) return null
+      var y = (idx + 0.5) / zones.length * contentHeight
+      return { x: 0, y: y - thickness / 2, width: contentWidth, height: thickness }
+    }
+    if (!(contentWidth > 0)) return null
+    var x = (idx + 0.5) / zones.length * contentWidth
+    return { x: x - thickness / 2, y: 0, width: thickness, height: contentHeight }
+  }
+
+  function markerSceneToScreen(rect) {
+    if (!rect) return null
+    try {
+      var screenPoint = barDragScreenPoint({ x: rect.x, y: rect.y })
+      return { x: screenPoint.x, y: screenPoint.y, width: rect.width, height: rect.height }
+    } catch (e) {
+      return null
+    }
+  }
+
   function moduleDropAtScene(scenePoint, sourceSlot) {
     var sourceWindow = root.slotWindow(sourceSlot) || root.barDragWindow
+    var contentWidth = 0
+    var contentHeight = 0
     if (sourceWindow && sourceWindow.contentItem) {
       var barPoint = sourceWindow.contentItem.mapFromItem(null, scenePoint.x, scenePoint.y)
       if (barPoint.x < 0 || barPoint.x > sourceWindow.contentItem.width ||
           barPoint.y < 0 || barPoint.y > sourceWindow.contentItem.height)
         return null
+      contentWidth = sourceWindow.contentItem.width
+      contentHeight = sourceWindow.contentItem.height
     }
 
     var candidates = []
@@ -942,7 +990,34 @@ Item {
       })
     }
 
-    return BarModel.nearestDropTarget(candidates, scenePoint, root.vertical)
+    // Pointer directly over a widget: keep the precise nearest-edge drop in
+    // that widget's own region.
+    var overWidget = false
+    for (var k = 0; k < candidates.length; k++) {
+      var c = candidates[k]
+      if (scenePoint.x >= c.x && scenePoint.x <= c.x + c.width &&
+          scenePoint.y >= c.y && scenePoint.y <= c.y + c.height) {
+        overWidget = true
+        break
+      }
+    }
+    if (overWidget) return BarModel.nearestDropTarget(candidates, scenePoint, root.vertical)
+
+    // Free space: the pointer's zone names the region, so a module can be
+    // dragged into a section — including an empty one — instead of always
+    // snapping to the nearest widget of another section.
+    var zone = root.dropZoneAtScene(scenePoint, contentWidth, contentHeight)
+    if (!zone) return BarModel.nearestDropTarget(candidates, scenePoint, root.vertical)
+    var zoneCandidates = candidates.filter(function(row) { return row.slot.region === zone })
+    if (zoneCandidates.length > 0)
+      return BarModel.nearestDropTarget(zoneCandidates, scenePoint, root.vertical)
+
+    return {
+      slot: null,
+      after: false,
+      region: zone,
+      markerScene: root.zoneMarkerSceneRect(zone, contentWidth, contentHeight)
+    }
   }
 
   function visibleModuleSlot(region, name, sourceSlot) {
@@ -2018,9 +2093,12 @@ Item {
           root.barDragScreenY = screenPoint.y
 
           var drop = root.moduleDropAtScene(scenePoint, slot)
-          root.barDragTarget = drop ? drop.slot : null
+          root.barDragTarget = drop && drop.slot ? drop.slot : null
+          root.barDragTargetRegion = drop && !drop.slot && drop.region ? drop.region : ""
           root.barDragAfter = drop ? drop.after : false
-          root.barDragTargetGeometry = drop ? root.dropMarkerRect(drop.slot, drop.after) : null
+          if (drop && drop.slot) root.barDragTargetGeometry = root.dropMarkerRect(drop.slot, drop.after)
+          else if (drop && drop.region) root.barDragTargetGeometry = root.markerSceneToScreen(drop.markerScene)
+          else root.barDragTargetGeometry = null
         }
       }
 
@@ -2028,6 +2106,7 @@ Item {
         var wasDragging = dragging
         var targetSlot = root.barDragTarget
         var afterTarget = root.barDragAfter
+        var targetRegion = root.barDragTargetRegion
 
         if (wasDragging) suppressClick = true
 
@@ -2036,6 +2115,9 @@ Item {
 
         if (wasDragging && targetSlot) {
           root.dropBarModuleAtTarget(slot, targetSlot, afterTarget)
+          mouse.accepted = true
+        } else if (wasDragging && targetRegion) {
+          root.dropBarModule(slot, targetRegion, "")
           mouse.accepted = true
         } else if (!wasDragging) {
           mouse.accepted = false
