@@ -258,6 +258,23 @@ assert(
   /BarModel\.nearestDropTarget\(candidates, scenePoint, root\.vertical\)/.test(barSource),
   'bar uses nearest insertion targeting for widget and free-space drops'
 )
+
+// Free space over an empty section has no widget to anchor a drop to, so the
+// pointer's zone along the bar names the region and the release appends
+// there. Without this, dragging into a section that starts empty (like
+// center-left) always snaps to a widget of another section.
+assert(
+  /function dropZoneAtScene\(scenePoint, contentWidth, contentHeight\)/.test(barSource),
+  'bar resolves free-space drops to a section zone by pointer position'
+)
+assert(
+  /zoneCandidates = candidates\.filter\(function\(row\) \{ return row\.slot\.region === zone \}\)/.test(barSource),
+  'bar prefers insertion edges inside the pointer zone in free space'
+)
+assert(
+  /root\.dropBarModule\(slot, targetRegion, ""\)/.test(barSource),
+  'bar appends to the empty zone region when the drag releases there'
+)
 assert(
   /component DragGhostPanel:[\s\S]*?readonly property var targetRect: root\.barDragTargetGeometry[\s\S]*?color: Color\.accent/.test(barSource),
   'bar draws the insertion marker above the bar in the drag overlay'
