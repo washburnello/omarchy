@@ -25,7 +25,7 @@ Usage: omarchy bar <command> [args...]
                                        Set a per-widget option
 
 Placement:
-  --section <left|center|right>        Target section
+  --section <left|center-left|center|center-right|right>  Target section
   --index <n>                          Target index
   --before <id>                        Insert before a widget
   --after <id>                         Insert after a widget
@@ -57,7 +57,7 @@ bar_option_exists() {
 }
 
 validate_section() {
-  [[ $1 =~ ^(left|center|right)$ ]] || fail "section must be left, center, or right"
+  [[ $1 =~ ^(left|center-left|center|center-right|right)$ ]] || fail "section must be left, center-left, center, center-right, or right"
 }
 
 validate_index() {
@@ -176,11 +176,13 @@ cmd_defaults() {
   commit "$NORMALIZE
     | .bar = \$defaults[0].bar
     | def entry_id: if type == \"object\" then (.id // \"\" | tostring) else tostring end;
-      def anchor_for(\$section): { left: \"omarchy.workspaces\", center: \"omarchy.weather\", right: \"omarchy.tray\" }[\$section];
-      reduce \$widgets[] as \$widget (.;
-        .bar.layout.left = (.bar.layout.left | map(select(entry_id != \$widget.id)))
-        | .bar.layout.center = (.bar.layout.center | map(select(entry_id != \$widget.id)))
-        | .bar.layout.right = (.bar.layout.right | map(select(entry_id != \$widget.id)))
+      def anchor_for($section): { left: "omarchy.workspaces", "center-left": "omarchy.workspaces", center: "omarchy.weather", "center-right": "omarchy.weather", right: "omarchy.tray" }[$section];
+      reduce $widgets[] as $widget (.;
+        .bar.layout.left = (.bar.layout.left | map(select(entry_id != $widget.id)))
+        | .bar.layout["center-left"] = (.bar.layout["center-left"] | map(select(entry_id != $widget.id)))
+        | .bar.layout.center = (.bar.layout.center | map(select(entry_id != $widget.id)))
+        | .bar.layout["center-right"] = (.bar.layout["center-right"] | map(select(entry_id != $widget.id)))
+        | .bar.layout.right = (.bar.layout.right | map(select(entry_id != $widget.id)))
         | (.bar.layout[\$widget.section] | map(entry_id) | index(anchor_for(\$widget.section))) as \$anchor
         | (\$anchor | if . == null then (.bar.layout[\$widget.section] | length) else . + 1 end) as \$index
         | .bar.layout[\$widget.section] = (
@@ -226,7 +228,7 @@ bar_widget_default_section() {
   }
   jq -r --arg id "$1" '
     map(select(.id == $id))[0].barWidget.defaultSection // "center"
-    | if IN("left", "center", "right") then . else "center" end
+    | if IN("left", "center-left", "center", "center-right", "right") then . else "center" end
   ' <<<"$catalog"
 }
 

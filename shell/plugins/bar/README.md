@@ -33,10 +33,12 @@ Example `shell.json` (bar subtree only shown):
         { "id": "omarchy.spacer", "size": 12 },
         { "id": "omarchy.workspaces" }
       ],
+      "center-left": [],
       "center": [
         { "id": "omarchy.media" },
         { "id": "omarchy.clock", "format": "HH:mm" }
       ],
+      "center-right": [],
       "right": [
         { "id": "omarchy.audio" },
         { "id": "omarchy.power" }
@@ -47,6 +49,8 @@ Example `shell.json` (bar subtree only shown):
 ```
 
 `centerAnchor` pins one center module to the exact horizontal/vertical center and flanks others around it. Set to an empty string to disable anchoring (the center list is centered as a group).
+
+The bar has five sections, left edge to right edge: `left`, `center-left`, `center`, `center-right`, `right`. `center-left` is anchored midway between the left edge and the center, `center-right` midway between the center and the right edge (top-center / bottom-center on vertical bars). Missing sections default to empty, so older three-section configs keep loading.
 
 ## Module catalogue
 

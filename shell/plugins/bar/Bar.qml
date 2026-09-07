@@ -46,7 +46,7 @@ Item {
     position: "top",
     transparent: false,
     centerAnchor: "omarchy.clock",
-    layout: { left: [], center: [], right: [] }
+    layout: { left: [], "center-left": [], center: [], "center-right": [], right: [] }
   })
   property var layoutConfig: fallbackBarConfig.layout
   property string centerAnchor: ""
@@ -564,9 +564,11 @@ Item {
   function normalizeLayout(layout) {
     var normalized = Util.normalizeLayout(Util.isPlainObject(layout) ? layout : fallbackBarConfig.layout)
     return {
-      left:   pinTrayToInner(normalized.left,   "left"),
-      center: pinTrayToInner(normalized.center, "center"),
-      right:  pinTrayToInner(normalized.right,  "right")
+      left:           pinTrayToInner(normalized.left,           "left"),
+      "center-left":  pinTrayToInner(normalized["center-left"],  "center-left"),
+      center:         pinTrayToInner(normalized.center,         "center"),
+      "center-right": pinTrayToInner(normalized["center-right"], "center-right"),
+      right:          pinTrayToInner(normalized.right,          "right")
     }
   }
 
@@ -1355,9 +1357,36 @@ Item {
 
         CenterModules { anchors.fill: parent }
 
+        // Invisible guides marking the mid-left (25%) and mid-right (75%)
+        // anchor points for the even 5-anchor layout.
+        Item {
+          id: leftHalfGuide
+          anchors.left: parent.left
+          anchors.right: parent.horizontalCenter
+          anchors.verticalCenter: parent.verticalCenter
+          height: parent.height
+        }
+        Item {
+          id: rightHalfGuide
+          anchors.left: parent.horizontalCenter
+          anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          height: parent.height
+        }
+
         LeftModules {
           anchors.left: parent.left
           anchors.leftMargin: Style.space(8)
+          anchors.verticalCenter: parent.verticalCenter
+        }
+
+        CenterLeftModules {
+          anchors.horizontalCenter: leftHalfGuide.horizontalCenter
+          anchors.verticalCenter: parent.verticalCenter
+        }
+
+        CenterRightModules {
+          anchors.horizontalCenter: rightHalfGuide.horizontalCenter
           anchors.verticalCenter: parent.verticalCenter
         }
 
@@ -1377,9 +1406,36 @@ Item {
 
         CenterModules { anchors.fill: parent }
 
+        // Vertical mapping: left->top, center-left->top-center (25%),
+        // center->middle, center-right->bottom-center (75%), right->bottom.
+        Item {
+          id: topHalfGuide
+          anchors.top: parent.top
+          anchors.bottom: parent.verticalCenter
+          anchors.horizontalCenter: parent.horizontalCenter
+          width: parent.width
+        }
+        Item {
+          id: bottomHalfGuide
+          anchors.top: parent.verticalCenter
+          anchors.bottom: parent.bottom
+          anchors.horizontalCenter: parent.horizontalCenter
+          width: parent.width
+        }
+
         LeftModules {
           anchors.top: parent.top
           anchors.topMargin: Style.space(8)
+          anchors.horizontalCenter: parent.horizontalCenter
+        }
+
+        CenterLeftModules {
+          anchors.verticalCenter: topHalfGuide.verticalCenter
+          anchors.horizontalCenter: parent.horizontalCenter
+        }
+
+        CenterRightModules {
+          anchors.verticalCenter: bottomHalfGuide.verticalCenter
           anchors.horizontalCenter: parent.horizontalCenter
         }
 
@@ -1524,6 +1580,16 @@ Item {
   component LeftModules: ModuleList {
     entries: root.layoutEntries("left")
     region: "left"
+  }
+
+  component CenterLeftModules: ModuleList {
+    entries: root.layoutEntries("center-left")
+    region: "center-left"
+  }
+
+  component CenterRightModules: ModuleList {
+    entries: root.layoutEntries("center-right")
+    region: "center-right"
   }
 
   component RightModules: ModuleList {

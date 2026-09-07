@@ -13,7 +13,7 @@ require_command python3
 jq empty "$ROOT/config/omarchy/shell.json"
 pass "default shell.json is valid JSON"
 
-jq -e '.version == 1 and (.bar.layout.left | type == "array") and (.bar.layout.center | type == "array") and (.bar.layout.right | type == "array")' "$ROOT/config/omarchy/shell.json" >/dev/null
+jq -e '.version == 1 and (.bar.layout.left | type == "array") and (.bar.layout["center-left"] | type == "array") and (.bar.layout.center | type == "array") and (.bar.layout["center-right"] | type == "array") and (.bar.layout.right | type == "array")' "$ROOT/config/omarchy/shell.json" >/dev/null
 pass "default shell.json has versioned bar layout"
 
 # Pinning the whole row made this fail every time an unrelated widget moved,
@@ -64,7 +64,7 @@ for manifest_path in (root / "shell/plugins").glob("**/manifest.json"):
   manifests[data.get("id", "")] = (manifest_path, data)
 
 entries = []
-for section in ("left", "center", "right"):
+for section in ("left", "center-left", "center", "center-right", "right"):
   entries.extend(config["bar"]["layout"][section])
 
 missing = []
@@ -406,7 +406,7 @@ pass "bar defaults places service widgets without a running shell"
 HOME="$TMPDIR/home" OMARCHY_PATH="$ROOT" PATH="$mock_path" OMARCHY_TEST_DROPBOX=0 OMARCHY_TEST_TAILSCALE=0 omarchy-refresh-shell
 jq -e '
   def ids: map(.id // .);
-  ([.bar.layout.left, .bar.layout.center, .bar.layout.right] | map(ids) | add) as $all |
+  ([.bar.layout.left, .bar.layout["center-left"], .bar.layout.center, .bar.layout["center-right"], .bar.layout.right] | map(ids) | add) as $all |
   ($all | index("omarchy.dropbox") == null) and
   ($all | index("omarchy.tailscale") == null)
 ' "$TMPDIR/home/.config/omarchy/shell.json" >/dev/null

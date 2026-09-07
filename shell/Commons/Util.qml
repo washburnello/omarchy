@@ -148,12 +148,21 @@ QtObject {
     return out
   }
 
+  // Bar sections, left edge to right edge. center-left / center-right
+  // flank the anchored center section. Missing keys default to [] so
+  // pre-5-section shell.json files keep loading.
+  function barSections() {
+    return ["left", "center-left", "center", "center-right", "right"]
+  }
+
   function normalizeLayout(layout) {
     var src = isPlainObject(layout) ? layout : {}
     return {
-      left:   normalizeLayoutSection(src.left),
-      center: normalizeLayoutSection(src.center),
-      right:  normalizeLayoutSection(src.right)
+      left:         normalizeLayoutSection(src.left),
+      "center-left":  normalizeLayoutSection(src["center-left"]),
+      center:       normalizeLayoutSection(src.center),
+      "center-right": normalizeLayoutSection(src["center-right"]),
+      right:        normalizeLayoutSection(src.right)
     }
   }
 }
