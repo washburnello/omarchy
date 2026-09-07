@@ -72,7 +72,7 @@ QtObject {
     if (manifest.barWidget !== undefined && Util.isPlainObject(manifest.barWidget)
         && manifest.barWidget.defaultSection !== undefined) {
       var defaultSection = String(manifest.barWidget.defaultSection)
-      if (["left", "center", "right"].indexOf(defaultSection) === -1) {
+      if (["left", "center-left", "center", "center-right", "right"].indexOf(defaultSection) === -1) {
         console.warn("PluginRegistry: invalid barWidget.defaultSection at " + sourcePath)
         return null
       }
@@ -194,7 +194,7 @@ QtObject {
   function defaultBarWidgetSection(manifest) {
     var metadata = manifest && Util.isPlainObject(manifest.barWidget) ? manifest.barWidget : null
     var section = metadata ? String(metadata.defaultSection || "") : ""
-    return ["left", "center", "right"].indexOf(section) !== -1 ? section : "center"
+    return ["left", "center-left", "center", "center-right", "right"].indexOf(section) !== -1 ? section : "center"
   }
 
   function barEntryId(entry) {
@@ -205,7 +205,7 @@ QtObject {
     if (!Util.isPlainObject(config) || !Util.isPlainObject(config.bar)
         || !Util.isPlainObject(config.bar.layout)) return { found: false }
     var key = Util.canonicalWidgetId(String(id))
-    var sections = ["left", "center", "right"]
+    var sections = ["left", "center-left", "center", "center-right", "right"]
     for (var s = 0; s < sections.length; s++) {
       if (section && sections[s] !== section) continue
       var entries = config.bar.layout[sections[s]]
@@ -249,7 +249,7 @@ QtObject {
 
   function barTarget(config, placement, fallbackSection) {
     var target = placement || {}
-    var section = ["left", "center", "right"].indexOf(String(target.section || "")) !== -1
+    var section = ["left", "center-left", "center", "center-right", "right"].indexOf(String(target.section || "")) !== -1
       ? String(target.section) : fallbackSection
     var relativeId = String(target.before || target.after || "")
     if (relativeId) {
@@ -267,7 +267,7 @@ QtObject {
       return { section: section, index: Math.min(requested, config.bar.layout[section].length) }
     }
 
-    var anchors = { left: "omarchy.workspaces", center: "omarchy.weather", right: "omarchy.tray" }
+    var anchors = { left: "omarchy.workspaces", "center-left": "omarchy.workspaces", center: "omarchy.weather", "center-right": "omarchy.weather", right: "omarchy.tray" }
     var anchor = findRelativeBarLocation(config, anchors[section], section)
     return {
       section: section,
@@ -385,9 +385,9 @@ QtObject {
   }
 
   function ensureConfigShape(config) {
-    if (!Util.isPlainObject(config.bar)) config.bar = { layout: { left: [], center: [], right: [] } }
+    if (!Util.isPlainObject(config.bar)) config.bar = { layout: { left: [], "center-left": [], center: [], "center-right": [], right: [] } }
     if (!Util.isPlainObject(config.bar.layout)) config.bar.layout = { left: [], center: [], right: [] }
-    var sections = ["left", "center", "right"]
+    var sections = ["left", "center-left", "center", "center-right", "right"]
     for (var i = 0; i < sections.length; i++) {
       if (!Array.isArray(config.bar.layout[sections[i]])) config.bar.layout[sections[i]] = []
     }
@@ -449,7 +449,7 @@ QtObject {
       var cloneLocation = findEntryLocation(config, cloneId)
       if (cloneLocation.kind === "bar") {
         var cloneEntry = config.bar.layout[cloneLocation.section][cloneLocation.index]
-        var sections = ["left", "center", "right"]
+        var sections = ["left", "center-left", "center", "center-right", "right"]
         for (var s = 0; s < sections.length; s++) {
           for (var i = config.bar.layout[sections[s]].length - 1; i >= 0; i--) {
             if (barEntryId(config.bar.layout[sections[s]][i]) === sourceId)
