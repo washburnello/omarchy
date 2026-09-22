@@ -6,6 +6,8 @@
 
 set -euo pipefail
 
+REMINDER_SOUND="${OMARCHY_REMINDER_SOUND:-/usr/share/sounds/freedesktop/stereo/bell.oga}"
+
 format_remaining() {
   local seconds=$1
   local minutes=$((seconds / 60))
@@ -36,6 +38,29 @@ active_reminder_timers() {
 
 refresh_indicator() {
   omarchy-shell -q omarchy.indicators refresh >/dev/null 2>&1 || true
+}
+
+play_reminder_sound() {
+  local sound_file="${1:-$REMINDER_SOUND}"
+
+  [[ -f $sound_file ]] || return 0
+
+  if omarchy-cmd-present mpv; then
+    mpv --no-video "$sound_file" >/dev/null 2>&1 || true
+  elif omarchy-cmd-present paplay; then
+    paplay "$sound_file" >/dev/null 2>&1 || true
+  elif omarchy-cmd-present canberra-gtk-play; then
+    canberra-gtk-play -f "$sound_file" >/dev/null 2>&1 || true
+  fi
+}
+
+fire_reminder() {
+  local message=$1 message_file=$2 sound_file=${3:-$REMINDER_SOUND}
+
+  play_reminder_sound "$sound_file"
+  omarchy-notification-send -u critical -g 󰢌 "Reminder" "$message"
+  rm -f "$message_file"
+  refresh_indicator
 }
 
 open_interactive() {
@@ -140,6 +165,10 @@ usage() {
 }
 
 case ${1:-} in
+__fire)
+  fire_reminder "$2" "$3" "${4:-$REMINDER_SOUND}"
+  exit 0
+  ;;
 -i | --interactive)
   open_interactive
   exit 0
@@ -195,7 +224,7 @@ if [[ -n $custom_message ]]; then
 fi
 
 systemd-run --user --quiet --collect --on-active="${minutes}m" --unit="$unit" \
-  bash -c 'omarchy-notification-send -g 󰢌 "Reminder" "$1"; rm -f "$2"; omarchy-shell -q omarchy.indicators refresh >/dev/null 2>&1 || true' bash "$message" "$message_file"
+  bash -c 'omarchy-reminder __fire "$1" "$2" "$3"' bash "$message" "$message_file" "$REMINDER_SOUND"
 
 refresh_indicator
 omarchy-notification-send -g 󰢌 "$confirmation_title" "$confirmation"
