@@ -276,7 +276,7 @@ assert(
   'bar appends to the empty zone region when the drag releases there'
 )
 assert(
-  /component DragGhostPanel:[\s\S]*?readonly property var targetRect: root\.barDragTargetGeometry[\s\S]*?color: Color\.accent/.test(barSource),
+  /component DragGhostPanel:[\s\S]*?readonly property var targetRect: root\.barDragTargetGeometry[\s\S]*?color: Commons\.Color\.accent/.test(barSource),
   'bar draws the insertion marker above the bar in the drag overlay'
 )
 
