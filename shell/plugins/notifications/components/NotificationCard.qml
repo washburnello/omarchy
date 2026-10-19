@@ -213,7 +213,7 @@ BorderSurface {
     Text {
       anchors.centerIn: parent
       text: "✕"
-      color: closeArea.containsMouse ? Color.notifications.text : root.dimColor
+      color: closeArea.containsMouse ? Commons.Color.notifications.text : root.dimColor
       font.pixelSize: Math.round(Style.font.caption * 1.44)
     }
 
